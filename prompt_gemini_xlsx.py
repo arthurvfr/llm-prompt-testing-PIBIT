@@ -47,7 +47,7 @@ if not student_code.strip():
 
 
 prompt_template = f"""
-Você é um professor de ciência da computação experiente, especialista em pedagogia para iniciantes em programação. 
+Você é um professor de ciência da computação experiente, especialista em pedagogia para iniciantes em programação.
 Sua tarefa é analisar o código de um aluno para um problema específico e fornecer um feedback formativo, utilizando a metodologia "Logic-of-Thought" (LoT).
 
 Regras INEGOCIÁVEIS:
@@ -75,10 +75,8 @@ Retorne ESTRITAMENTE no formato JSON abaixo:
   "tipo_de_erro": "<Sintaxe, Execução ou Lógica>",
   "feedback_formativo": "<Um comentário curto e amigável dizendo vagamente onde a execução tropeça. Fale de APENAS UM erro.>",
   "dica_acao": "<Uma pergunta socrática ou um caso de teste para o aluno investigar. NUNCA diga o que está faltando.>"
-
 }}
-
-"""     
+"""
 
 print("\nAnalisando o código do aluno... Aguarde.")
 
