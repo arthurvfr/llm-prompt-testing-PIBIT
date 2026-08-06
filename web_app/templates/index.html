@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedback Formativo de Python</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>Feedback Formativo de Python</h1>
+    <p class="subtitulo">Escreva seu código, envie e receba uma dica para descobrir o erro sozinho.</p>
+  </header>
+
+  <main>
+    <section class="painel">
+      <label for="problema">Problema</label>
+      <select id="problema">
+        {% for p in problemas %}
+        <option value="{{ p.id }}" data-descricao="{{ p.descricao }}">{{ p.titulo }}</option>
+        {% endfor %}
+      </select>
+
+      <div class="enunciado" id="enunciado"></div>
+
+      <label for="codigo">Seu código em Python</label>
+      <div class="editor">
+        <pre class="linhas" id="linhas">1</pre>
+        <textarea id="codigo" spellcheck="false" placeholder="# escreva aqui seu código..."></textarea>
+      </div>
+
+      <div class="acoes">
+        <button id="enviar">Enviar para avaliação</button>
+        <button id="limpar" class="secundario">Limpar</button>
+      </div>
+    </section>
+
+    <section class="painel resultado" id="resultado" hidden>
+      <div id="status" class="status"></div>
+
+      <div class="bloco">
+        <h2>Feedback</h2>
+        <p id="feedback"></p>
+      </div>
+
+      <div class="bloco dica">
+        <h2>Dica para investigar</h2>
+        <p id="dica"></p>
+      </div>
+
+      <ul class="meta" id="meta"></ul>
+    </section>
+
+    <div id="erro" class="erro" hidden></div>
+  </main>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# Dependências da aplicação web. Reaproveita as dos scripts (google-genai, openpyxl).
+# Instalação:  ..\venv\Scripts\pip.exe install -r requirements.txt
+
+-r ../requirements.txt
+
+Flask==3.1.3
