@@ -1,28 +1,35 @@
 """
-Processa as submissões da planilha rubrica_avaliacao.xlsx chamando o Gemini
+Processa as submissões da planilha planilha_pesquisa.xlsx chamando o Gemini
 com o mesmo prompt (Logic-of-Thought) do script original, e grava as respostas
 nas colunas Gemini_*.
 
 Rode localmente (precisa de acesso à API do Gemini e da sua GEMINI_API_KEY em config.py):
-    python avaliar_lote.py                  # menu interativo (lote completo ou linhas escolhidas)
-    python avaliar_lote.py --tudo           # lote completo, sem perguntar
-    python avaliar_lote.py --linhas 5,7,10-12   # apenas essas linhas (reavaliação)
+    python avaliar_lote.py                  # menu interativo
+    python avaliar_lote.py --refazer        # REFAZ todas as avaliações, sobrescrevendo
+    python avaliar_lote.py --tudo           # só as linhas ainda não avaliadas
+    python avaliar_lote.py --linhas 5,7,10-12     # apenas essas linhas (reavaliação)
     python avaliar_lote.py --linhas 5,7 --forcar  # idem, sobrescrevendo sem perguntar
 
 Na reavaliação por linhas, toda linha que já tiver avaliação é exibida e o script
-pergunta se deve sobrescrevê-la com o novo feedback.
+pergunta se deve sobrescrevê-la com o novo feedback. Antes de qualquer execução que
+sobrescreva avaliações existentes, uma cópia da planilha é salva em backups/.
 
 Requisitos: google-genai, openpyxl
 """
 import argparse
 import json
+import os
+import shutil
 import time
+from datetime import datetime
+
 import openpyxl
 from google import genai
 from google.genai import types
 from config import GEMINI_API_KEY
 
-RUBRICA_FILE = "rubrica_avaliacao.xlsx"
+PLANILHA_FILE = "planilha_pesquisa.xlsx"
+BACKUP_DIR = "backups"
 MODEL = "gemini-flash-latest"
 SLEEP_BETWEEN_CALLS = 15
 
@@ -248,11 +255,12 @@ def escolher_modo_interativo():
     Retorna (linhas_selecionadas, politica). linhas_selecionadas = None significa lote completo.
     """
     print("Como deseja avaliar?")
-    print("  [1] Lote completo (todas as linhas ainda não preenchidas)")
+    print("  [1] Lote completo (apenas as linhas ainda não preenchidas)")
     print("  [2] Escolher uma ou mais linhas da planilha (reavaliação)")
+    print("  [3] REFAZER todas as avaliações (sobrescreve tudo que já está preenchido)")
 
     while True:
-        opcao = input("Opção [1/2]: ").strip()
+        opcao = input("Opção [1/2/3]: ").strip()
 
         if opcao == "1":
             return None, {"modo": "nunca"}
@@ -266,7 +274,14 @@ def escolher_modo_interativo():
             # Linhas já preenchidas serão confirmadas uma a uma na hora de gravar.
             return linhas, {"modo": "perguntar"}
 
-        print("[ERRO] Digite 1 ou 2.")
+        if opcao == "3":
+            print("Todas as colunas Gemini_* serão regeradas. Um backup será salvo antes.")
+            if input("Confirma? [s/N]: ").strip().lower() in ("s", "sim"):
+                return None, {"modo": "sempre"}
+            print("Cancelado.")
+            continue
+
+        print("[ERRO] Digite 1, 2 ou 3.")
 
 
 def resumir(texto, limite=110):
@@ -305,6 +320,15 @@ def confirmar_sobrescrita(ws, row, politica):
             return False
 
         print("  [ERRO] Responda s, n, t ou q.")
+
+
+def criar_backup():
+    """Copia a planilha para backups/ antes de sobrescrever avaliações. Retorna o caminho."""
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    nome = os.path.splitext(os.path.basename(PLANILHA_FILE))[0]
+    destino = os.path.join(BACKUP_DIR, f"{nome}_{datetime.now():%Y%m%d_%H%M%S}.xlsx")
+    shutil.copy2(PLANILHA_FILE, destino)
+    return destino
 
 
 def normalizar_diagnostico(resultado):
@@ -355,7 +379,7 @@ def normalizar_planilha(ws):
     return corrigidas
 
 
-def processar(ws, row, politica):
+def processar(ws, row, politica, posicao=""):
     """Avalia uma única linha da planilha. Retorna 'ok', 'pulado' ou 'falha'."""
     problem = ws.cell(row, 1).value
     student = ws.cell(row, 2).value
@@ -377,7 +401,7 @@ def processar(ws, row, politica):
         print(f"PULANDO linha {row}: problema={problem} aluno={student} tentativa={attempt} (Já preenchido)")
         return "pulado"
 
-    print(f"Processando linha {row}: problema={problem} aluno={student} tentativa={attempt}...", end=" ")
+    print(f"{posicao}Processando linha {row}: problema={problem} aluno={student} tentativa={attempt}...", end=" ")
 
     try:
         resultado = chamar_gemini(problem_description, code, str(problem))
@@ -407,7 +431,10 @@ def processar(ws, row, politica):
 def main():
     parser = argparse.ArgumentParser(description="Avalia submissões da planilha com o Gemini.")
     parser.add_argument("--linhas", help="Linhas da planilha a avaliar. Ex: 5,7,10-12")
-    parser.add_argument("--tudo", action="store_true", help="Lote completo, sem menu interativo.")
+    parser.add_argument("--tudo", action="store_true",
+                        help="Lote completo (só as não avaliadas), sem menu interativo.")
+    parser.add_argument("--refazer", action="store_true",
+                        help="Refaz TODAS as avaliações, sobrescrevendo as já preenchidas.")
     parser.add_argument("--forcar", action="store_true",
                         help="Sobrescreve linhas já preenchidas sem perguntar.")
     parser.add_argument("--normalizar", action="store_true",
@@ -415,14 +442,17 @@ def main():
     args = parser.parse_args()
 
     if args.normalizar:
-        wb_rubrica = openpyxl.load_workbook(RUBRICA_FILE)
+        wb_rubrica = openpyxl.load_workbook(PLANILHA_FILE)
         corrigidas = normalizar_planilha(wb_rubrica["Avaliacao"])
         if corrigidas:
-            wb_rubrica.save(RUBRICA_FILE)
-        print(f"\n{corrigidas} linha(s) normalizada(s) em {RUBRICA_FILE}.")
+            wb_rubrica.save(PLANILHA_FILE)
+        print(f"\n{corrigidas} linha(s) normalizada(s) em {PLANILHA_FILE}.")
         return
 
-    if args.linhas:
+    if args.refazer:
+        linhas_escolhidas = None
+        politica = {"modo": "sempre"}
+    elif args.linhas:
         linhas_escolhidas = parse_linhas(args.linhas)
         politica = {"modo": "sempre" if args.forcar else "perguntar"}
     elif args.tudo:
@@ -431,12 +461,17 @@ def main():
     else:
         linhas_escolhidas, politica = escolher_modo_interativo()
 
-    wb_rubrica = openpyxl.load_workbook(RUBRICA_FILE)
+    # Quem pode sobrescrever avaliação existente leva backup antes de começar.
+    if politica["modo"] != "nunca":
+        print(f"Backup salvo em {criar_backup()}")
+
+    wb_rubrica = openpyxl.load_workbook(PLANILHA_FILE)
     ws = wb_rubrica["Avaliacao"]
 
     if linhas_escolhidas is None:
         linhas = list(range(2, ws.max_row + 1))
-        print(f"\nIniciando processamento em lote (linhas 2 a {ws.max_row})...")
+        acao = "Refazendo TODAS as avaliações" if politica["modo"] == "sempre" else "Processamento em lote"
+        print(f"\n{acao} (linhas 2 a {ws.max_row})...")
     else:
         fora = [r for r in linhas_escolhidas if r > ws.max_row]
         if fora:
@@ -449,8 +484,11 @@ def main():
 
     processadas, falhas = 0, 0
 
+    print(f"Tempo estimado: ~{len(linhas) * SLEEP_BETWEEN_CALLS // 60} min (pausa de "
+          f"{SLEEP_BETWEEN_CALLS}s entre chamadas por causa do rate limit).\n")
+
     for i, row in enumerate(linhas):
-        status = processar(ws, row, politica)
+        status = processar(ws, row, politica, f"[{i + 1}/{len(linhas)}] ")
 
         if status == "pulado":
             continue
@@ -460,14 +498,14 @@ def main():
             falhas += 1
 
         # Salva o arquivo a cada iteração para garantir que não haja perda de dados
-        wb_rubrica.save(RUBRICA_FILE)
+        wb_rubrica.save(PLANILHA_FILE)
 
         # Respeita o limite de taxa (Rate Limit) da API — desnecessário após a última linha
         if i < len(linhas) - 1:
             time.sleep(SLEEP_BETWEEN_CALLS)
 
     print(f"\nConcluído. {processadas} submissões processadas, {falhas} falhas.")
-    print(f"Resultados finais gravados com segurança em {RUBRICA_FILE}.")
+    print(f"Resultados finais gravados com segurança em {PLANILHA_FILE}.")
 
 if __name__ == "__main__":
     main()
