@@ -9,7 +9,7 @@ pelo mesmo prompt Logic-of-Thought (LoT) usado em `../avaliar_lote.py`.
 ```
 web_app/
 ├── app.py              # servidor Flask (rotas / e /api/avaliar)
-├── avaliador.py        # banco de problemas + prompt LoT + chamada ao Gemini
+├── avaliador.py        # banco de problemas + prompt LoT + chamada ao Gemini/LLM local
 ├── requirements.txt
 ├── templates/
 │   └── index.html
@@ -18,10 +18,25 @@ web_app/
     └── script.js
 ```
 
+## Fonte do feedback: Gemini ou LLM local
+
+A interface tem um seletor "Fonte do feedback" com duas opções, enviadas em
+`provedor` no POST de `/api/avaliar`:
+
+- **Gemini (nuvem)** — padrão, usa a API do Gemini (precisa de `GEMINI_API_KEY`).
+- **LLM local (llama-server)** — usa um servidor llama.cpp local, com a mesma
+  lógica de `../avaliar_lote_local.py` (endpoint `http://localhost:1234/v1/chat/completions`).
+  Suba o servidor local (ex.: `../iniciar_server.bat`) antes de escolher essa opção.
+
+O prompt Logic-of-Thought e o banco de problemas/casos de teste são os mesmos
+para as duas fontes — só muda quem responde.
+
 ## Chave da API
 
 Usa `GEMINI_API_KEY` da variável de ambiente; se não existir, importa o
 `config.py` da pasta raiz do projeto (mesmo comportamento do script de lote).
+Só é necessária se você for usar a fonte "Gemini (nuvem)" — a `chave` é
+carregada de forma preguiçosa, então rodar só com o LLM local funciona sem ela.
 
 ## Como rodar
 

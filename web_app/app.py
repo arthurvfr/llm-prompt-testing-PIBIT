@@ -34,9 +34,10 @@ def api_avaliar():
     dados = request.get_json(silent=True) or {}
     problema_id = dados.get("problema")
     codigo = dados.get("codigo", "")
+    provedor = dados.get("provedor", "gemini")
 
     try:
-        resultado = avaliar(problema_id, codigo)
+        resultado = avaliar(problema_id, codigo, provedor)
     except ValueError as e:
         return jsonify({"erro": str(e)}), 400
     except Exception as e:  # falha de rede, API ou JSON inválido

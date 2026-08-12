@@ -1,17 +1,29 @@
 """
-Núcleo de avaliação reutilizado do script de lote (avaliar_lote.py).
+Núcleo de avaliação reutilizado do script de lote (avaliar_lote.py e
+avaliar_lote_local.py).
 
-Mantém o mesmo banco de problemas, o mesmo prompt Logic-of-Thought (LoT)
-e a mesma chamada ao Gemini, agora expostos para uso pela aplicação web.
+Mantém o mesmo banco de problemas e o mesmo prompt Logic-of-Thought (LoT), e
+permite avaliar tanto com o Gemini (nuvem) quanto com um LLM local servido
+pelo llama-server (llama.cpp), agora expostos para uso pela aplicação web.
 """
 import json
 import os
+import re
 import sys
-
-from google import genai
-from google.genai import types
+import urllib.error
+import urllib.request
 
 MODEL = "gemini-flash-latest"
+
+# ---------------------------------------------------------------------------
+# Configuração do LLM local (llama-server)
+# ---------------------------------------------------------------------------
+LOCAL_URL = "http://localhost:1234/v1/chat/completions"
+LOCAL_TIMEOUT_SEGUNDOS = 900
+LOCAL_TEMPERATURA = 0.2
+LOCAL_MAX_TOKENS = 2048
+
+PROVEDORES = ("gemini", "local")
 
 
 def _carregar_api_key():
@@ -33,7 +45,17 @@ def _carregar_api_key():
         ) from exc
 
 
-client = genai.Client(api_key=_carregar_api_key())
+_client = None
+
+
+def _obter_client_gemini():
+    """Cria o client do Gemini na primeira vez que for preciso (lazy), para
+    que a opção de LLM local funcione mesmo sem GEMINI_API_KEY configurada."""
+    global _client
+    if _client is None:
+        from google import genai  # noqa: PLC0415
+        _client = genai.Client(api_key=_carregar_api_key())
+    return _client
 
 banco_problemas = {
     "1132": "Escreva um programa que leia dois valores inteiros X e Y. Calcule e mostre a soma de todos os números não múltiplos de 13 entre X e Y, incluindo ambos.",
@@ -204,8 +226,10 @@ Retorne ESTRITAMENTE no formato JSON abaixo:
 
 
 def chamar_gemini(problem_description, student_code, problema_id=None):
+    from google.genai import types  # noqa: PLC0415
+
     prompt = montar_prompt(problem_description, student_code, problema_id)
-    response = client.models.generate_content(
+    response = _obter_client_gemini().models.generate_content(
         model=MODEL,
         contents=prompt,
         config=types.GenerateContentConfig(
@@ -216,10 +240,69 @@ def chamar_gemini(problem_description, student_code, problema_id=None):
     return json.loads(response.text)
 
 
-def avaliar(problema_id, student_code):
+# ---------------------------------------------------------------------------
+# LLM local (llama-server) — mesma lógica de avaliar_lote_local.py
+# ---------------------------------------------------------------------------
+def _http_post_json(url, payload, timeout):
+    dados = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=dados, headers={"Content-Type": "application/json"}, method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def extrair_json(texto):
+    """Isola o objeto JSON da resposta do modelo local.
+
+    Modelos locais costumam sujar a saída de três formas: bloco de raciocínio
+    <think>...</think>, cercas de markdown ```json ... ``` e texto solto antes
+    ou depois do objeto. Aqui todas são removidas antes do json.loads.
+    """
+    if texto is None:
+        raise ValueError("Resposta vazia do servidor.")
+
+    texto = re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL | re.IGNORECASE)
+    texto = re.sub(r"^.*?</think>", "", texto, flags=re.DOTALL | re.IGNORECASE)
+    texto = re.sub(r"```(?:json)?", "", texto)
+    texto = texto.strip()
+
+    try:
+        return json.loads(texto)
+    except json.JSONDecodeError:
+        inicio, fim = texto.find("{"), texto.rfind("}")
+        if inicio == -1 or fim == -1 or fim <= inicio:
+            raise ValueError(f"Não encontrei JSON na resposta: {texto[:300]}")
+        return json.loads(texto[inicio : fim + 1])
+
+
+def chamar_llm_local(problem_description, student_code, problema_id=None):
+    prompt = montar_prompt(problem_description, student_code, problema_id)
+    payload = {
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": LOCAL_TEMPERATURA,
+        "max_tokens": LOCAL_MAX_TOKENS,
+        "response_format": {"type": "json_object"},
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+    try:
+        resposta = _http_post_json(LOCAL_URL, payload, LOCAL_TIMEOUT_SEGUNDOS)
+    except urllib.error.URLError as e:
+        raise RuntimeError(
+            f"Não consegui falar com o LLM local em {LOCAL_URL}. "
+            f"O llama-server está rodando? Detalhe: {e}"
+        ) from e
+
+    conteudo = resposta["choices"][0]["message"]["content"]
+    return extrair_json(conteudo)
+
+
+def avaliar(problema_id, student_code, provedor="gemini"):
     """Avalia o código de um aluno para um problema do banco.
 
-    Levanta ValueError se o problema não existir ou o código estiver vazio.
+    provedor: "gemini" (padrão, nuvem) ou "local" (llama-server na máquina).
+    Levanta ValueError se o problema não existir, o código estiver vazio ou o
+    provedor for desconhecido.
     """
     problem_description = banco_problemas.get(str(problema_id))
     if not problem_description:
@@ -228,4 +311,10 @@ def avaliar(problema_id, student_code):
     if not student_code or not student_code.strip():
         raise ValueError("O código enviado está vazio.")
 
+    provedor = (provedor or "gemini").strip().lower()
+    if provedor not in PROVEDORES:
+        raise ValueError(f"Provedor '{provedor}' desconhecido. Use 'gemini' ou 'local'.")
+
+    if provedor == "local":
+        return chamar_llm_local(problem_description, student_code, str(problema_id))
     return chamar_gemini(problem_description, student_code, str(problema_id))

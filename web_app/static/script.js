@@ -1,3 +1,4 @@
+const selProvedor = document.getElementById("provedor");
 const selProblema = document.getElementById("problema");
 const enunciado = document.getElementById("enunciado");
 const codigo = document.getElementById("codigo");
@@ -58,7 +59,11 @@ btnEnviar.addEventListener("click", async () => {
     const resposta = await fetch("/api/avaliar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ problema: selProblema.value, codigo: codigo.value }),
+      body: JSON.stringify({
+        problema: selProblema.value,
+        codigo: codigo.value,
+        provedor: selProvedor.value,
+      }),
     });
     const dados = await resposta.json();
 

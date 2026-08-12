@@ -14,6 +14,12 @@
 
   <main>
     <section class="painel">
+      <label for="provedor">Fonte do feedback</label>
+      <select id="provedor">
+        <option value="gemini">Gemini (nuvem)</option>
+        <option value="local">LLM local (llama-server)</option>
+      </select>
+
       <label for="problema">Problema</label>
       <select id="problema">
         {% for p in problemas %}
