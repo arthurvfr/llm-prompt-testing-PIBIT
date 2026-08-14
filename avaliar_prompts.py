@@ -46,9 +46,7 @@ import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-# ---------------------------------------------------------------------------
-# Configuração
-# ---------------------------------------------------------------------------
+
 PLANILHA_FILE = "planilha_pesquisa.xlsx"
 BACKUP_DIR = "backups"
 
@@ -58,10 +56,8 @@ TIMEOUT_SEGUNDOS = 900
 TEMPERATURA = 0.2
 MAX_TOKENS = 2048
 
-# Aba de onde o gabarito (K-M) e os códigos (A-E) são copiados.
 ABA_REFERENCIA = "Avaliacao"
 
-# Cada variante grava na sua própria aba. P3 aponta para a aba que já existe.
 ABA_POR_VARIANTE = {
     "P0": "Local_P0",
     "P2": "Local_P2",
@@ -78,9 +74,7 @@ DESCRICAO_VARIANTE = {
 TIPO_SEM_ERRO = "Nenhum (código correto)"
 LINHA_SEM_ERRO = "-"
 
-# ---------------------------------------------------------------------------
-# Banco de problemas e casos de teste
-# ---------------------------------------------------------------------------
+
 banco_problemas = {
     "1132": "Escreva um programa que leia dois valores inteiros X e Y. Calcule e mostre a soma de todos os números não múltiplos de 13 entre X e Y, incluindo ambos.",
     "1153": "Ler um valor N (N < 13). Calcular e escrever seu respectivo fatorial (N!). Fatorial de N = N * (N-1) * (N-2) * (N-3) * ... * 1.",
@@ -309,9 +303,8 @@ Retorne ESTRITAMENTE no formato JSON abaixo:
 MONTADOR = {"P0": prompt_p0, "P2": prompt_p2, "P3": prompt_p3}
 
 
-# ---------------------------------------------------------------------------
+
 # Comunicação com o llama-server
-# ---------------------------------------------------------------------------
 def _http_post_json(url, payload, timeout):
     dados = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
@@ -380,9 +373,7 @@ def testar_conexao():
         return False
 
 
-# ---------------------------------------------------------------------------
 # Abas
-# ---------------------------------------------------------------------------
 HEADER_FILL = PatternFill("solid", start_color="1F4E78", end_color="1F4E78")
 HEADER_FONT = Font(bold=True, color="FFFFFF", name="Arial", size=10)
 BASE_FONT = Font(name="Arial", size=10)
@@ -560,9 +551,8 @@ def preparar_comparativo_prompts(wb, ultima):
     print(f"Aba '{nome}' atualizada com as variantes: {', '.join(presentes)}.")
 
 
-# ---------------------------------------------------------------------------
+
 # Seleção de linhas
-# ---------------------------------------------------------------------------
 def parse_linhas(texto):
     linhas = set()
     for parte in texto.replace(";", ",").split(","):

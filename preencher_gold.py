@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Preenche as colunas Gold_* (rascunho) em rubrica_avaliacao_2.xlsx com base na
+"""Preenche as colunas Gold_* (rascunho) em planilha_pesquisa.xlsx com base na
 analise manual dos diffs entre tentativas consecutivas de cada aluno e casos sintéticos."""
 import openpyxl
 
-# Atualizado para o nome do arquivo mais recente
-RUBRICA_FILE = "rubrica_avaliacao.xlsx"
+RUBRICA_FILE = "planilha_pesquisa.xlsx"
 
 # key: (problem, student, attempt) -> (tipo_erro, linha_erro, descricao, comentario_extra)
 GOLD = {
