@@ -2,7 +2,7 @@
 
 Interface em que o aluno escolhe um problema, escreve seu código em Python e
 recebe **uma mensagem de feedback** junto de **uma dica socrática**, geradas
-pelo mesmo prompt Logic-of-Thought (LoT) usado em `../avaliar_lote.py`.
+pelo mesmo prompt Logic-of-Thought (LoT) usado em `../scripts/avaliar_lote_gemini.py`.
 
 ## Estrutura
 
@@ -10,13 +10,15 @@ pelo mesmo prompt Logic-of-Thought (LoT) usado em `../avaliar_lote.py`.
 web_app/
 ├── app.py              # servidor Flask (rotas / e /api/avaliar)
 ├── avaliador.py        # banco de problemas + prompt LoT + chamada ao Gemini/LLM local
-├── requirements.txt
 ├── templates/
 │   └── index.html
 └── static/
     ├── style.css
     └── script.js
 ```
+
+As dependências ficam no `requirements.txt` único na raiz do repositório (veja
+o README principal) — não há um `requirements.txt` próprio desta pasta.
 
 ## Fonte do feedback: Gemini ou LLM local
 
@@ -25,7 +27,7 @@ A interface tem um seletor "Fonte do feedback" com duas opções, enviadas em
 
 - **Gemini (nuvem)** — padrão, usa a API do Gemini (precisa de `GEMINI_API_KEY`).
 - **LLM local (llama-server)** — usa um servidor llama.cpp local, com a mesma
-  lógica de `../avaliar_lote_local.py` (endpoint `http://localhost:1234/v1/chat/completions`).
+  lógica de `../scripts/avaliar_lote_local.py` (endpoint `http://localhost:1234/v1/chat/completions`).
   Suba o servidor local (ex.: `../iniciar_server.bat`) antes de escolher essa opção.
 
 O prompt Logic-of-Thought e o banco de problemas/casos de teste são os mesmos
@@ -41,7 +43,7 @@ carregada de forma preguiçosa, então rodar só com o LLM local funciona sem el
 ## Como rodar
 
 ```powershell
-..\venv\Scripts\pip.exe install -r requirements.txt
+..\venv\Scripts\pip.exe install -r ..\requirements.txt
 ..\venv\Scripts\python.exe app.py
 ```
 

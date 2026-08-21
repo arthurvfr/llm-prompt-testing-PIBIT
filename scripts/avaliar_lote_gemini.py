@@ -20,16 +20,21 @@ import argparse
 import json
 import os
 import shutil
+import sys
 import time
 from datetime import datetime
 
 import openpyxl
 from google import genai
 from google.genai import types
+
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if RAIZ not in sys.path:
+    sys.path.insert(0, RAIZ)
 from config import GEMINI_API_KEY
 
-PLANILHA_FILE = "planilha_pesquisa.xlsx"
-BACKUP_DIR = "backups"
+PLANILHA_FILE = os.path.join(RAIZ, "planilha_pesquisa.xlsx")
+BACKUP_DIR = os.path.join(RAIZ, "backups")
 MODEL = "gemini-flash-latest"
 SLEEP_BETWEEN_CALLS = 15
 

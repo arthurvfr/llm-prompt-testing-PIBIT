@@ -39,8 +39,9 @@ from openpyxl.utils import get_column_letter
 # ---------------------------------------------------------------------------
 # Configuração do servidor local
 # ---------------------------------------------------------------------------
-PLANILHA_FILE = "planilha_pesquisa.xlsx"
-BACKUP_DIR = "backups"
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PLANILHA_FILE = os.path.join(RAIZ, "planilha_pesquisa.xlsx")
+BACKUP_DIR = os.path.join(RAIZ, "backups")
 
 LOCAL_URL = "http://localhost:1234/v1/chat/completions"
 # Nome apenas informativo: o llama-server responde com o modelo que estiver carregado.

@@ -47,8 +47,9 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 
-PLANILHA_FILE = "planilha_pesquisa.xlsx"
-BACKUP_DIR = "backups"
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PLANILHA_FILE = os.path.join(RAIZ, "planilha_pesquisa.xlsx")
+BACKUP_DIR = os.path.join(RAIZ, "backups")
 
 LOCAL_URL = "http://localhost:1234/v1/chat/completions"
 MODEL_LABEL = "Qwen3-Coder-30B-A3B-Instruct-UD-Q8_K_XL (local, llama.cpp)"

@@ -1,4 +1,5 @@
 config.py
+iniciar_server.bat
 __pycache__/
 venv/
 backups/
